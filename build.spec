@@ -5,8 +5,16 @@ from PyInstaller.utils.hooks import collect_data_files, collect_submodules
 
 block_cipher = None
 
-# Collect whisper model assets
+# Collect whisper package assets (assets/, mel_filters.npz, etc.)
 whisper_datas = collect_data_files('whisper')
+
+# Bundle the pre-downloaded whisper model file
+whisper_cache = os.path.join(os.path.expanduser('~'), '.cache', 'whisper')
+model_datas = []
+if os.path.isdir(whisper_cache):
+    for fname in os.listdir(whisper_cache):
+        if fname.endswith('.pt'):
+            model_datas.append((os.path.join(whisper_cache, fname), 'whisper_models'))
 
 a = Analysis(
     ['main.py'],
@@ -15,7 +23,7 @@ a = Analysis(
     datas=[
         ('config.json', '.'),
         ('src', 'src'),
-    ] + whisper_datas,
+    ] + whisper_datas + model_datas,
     hiddenimports=[
         'customtkinter',
         'anthropic',

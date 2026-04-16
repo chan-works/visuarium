@@ -1,10 +1,21 @@
 import threading
 import queue
 import time
+import os
+import sys
 import numpy as np
 import sounddevice as sd
 import whisper
 from typing import Callable, Optional
+
+
+def _get_whisper_download_root() -> str:
+    """Return the bundled model dir when frozen, else default cache."""
+    if getattr(sys, 'frozen', False):
+        bundled = os.path.join(sys._MEIPASS, 'whisper_models')
+        if os.path.isdir(bundled):
+            return bundled
+    return os.path.join(os.path.expanduser('~'), '.cache', 'whisper')
 
 
 class STTEngine:
@@ -37,7 +48,8 @@ class STTEngine:
 
         _cb(f"Whisper 모델 로딩 중... ({self.model_name})")
         try:
-            self.model = whisper.load_model(self.model_name)
+            download_root = _get_whisper_download_root()
+            self.model = whisper.load_model(self.model_name, download_root=download_root)
             _cb("모델 로드 완료")
         except Exception as e:
             self.model = None

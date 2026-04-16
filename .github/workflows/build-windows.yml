@@ -32,6 +32,9 @@ jobs:
         run: |
           echo '{"api_key":"","model":"claude-opus-4-6","mic_index":null,"mic_name":"","osc_ip":"127.0.0.1","osc_port":9001,"osc_address":"/prompt","websocket_port":9000,"whisper_model":"base","vad_threshold":0.01,"silence_duration":1.5}' > config.json
 
+      - name: Whisper base 모델 사전 다운로드
+        run: python -c "import whisper; whisper.load_model('base')"
+
       - name: PyInstaller 빌드
         run: |
           pyinstaller build.spec --clean --noconfirm
