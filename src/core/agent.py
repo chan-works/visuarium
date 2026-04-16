@@ -1,4 +1,5 @@
 import anthropic
+import re
 from typing import Optional
 
 SYSTEM_PROMPT = """You are a creative visual prompt expander for an AI art installation called 멀티턴 대화형 에이전트.
@@ -60,6 +61,28 @@ def get_display_text(response_text: str) -> str:
     return response_text.strip()
 
 
+def _has_non_ascii(text: str) -> bool:
+    """Return True if text contains non-ASCII (e.g. Korean) characters."""
+    return bool(re.search(r'[^\x00-\x7F]', text))
+
+
+def translate_to_english(prompt: str, client: anthropic.Anthropic) -> str:
+    """
+    If the prompt contains non-English characters, translate it to English.
+    Uses claude-haiku-4-5 for fast, cheap translation.
+    """
+    if not _has_non_ascii(prompt):
+        return prompt  # Already English — skip API call
+
+    response = client.messages.create(
+        model="claude-haiku-4-5",
+        max_tokens=256,
+        system="You are a translator. Translate the given image generation prompt to English only. Output ONLY the translated prompt, no explanations.",
+        messages=[{"role": "user", "content": prompt}],
+    )
+    return response.content[0].text.strip()
+
+
 class VisuariumAgent:
     def __init__(self, api_key: str, model: str = "claude-opus-4-6"):
         self.api_key = api_key
@@ -99,6 +122,7 @@ class VisuariumAgent:
         display = get_display_text(assistant_text)
 
         if prompt:
+            prompt = translate_to_english(prompt, client)
             self.current_prompt = prompt
 
         return display, self.current_prompt
