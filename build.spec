@@ -47,7 +47,7 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name='멀티턴대화형에이전트',
+    name='agent',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -69,5 +69,5 @@ coll = COLLECT(
     strip=False,
     upx=True,
     upx_exclude=[],
-    name='멀티턴대화형에이전트',
+    name='agent',
 )
