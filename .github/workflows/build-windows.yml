@@ -54,7 +54,7 @@ jobs:
         with:
           tag_name: ${{ steps.version.outputs.tag }}
           name: "멀티턴 대화형 에이전트 ${{ steps.version.outputs.tag }}"
-          body-path: release_body.txt
+          body_path: release_body.txt
           files: |
             agent_Windows.zip
           draft: false
