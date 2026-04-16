@@ -47,38 +47,7 @@ jobs:
 
       - name: 버전 및 릴리즈 노트 생성
         id: version
-        run: |
-          python -c "
-          import subprocess, datetime, os
-
-          date = datetime.datetime.now().strftime('%Y.%m.%d')
-          run = '${{ github.run_number }}'
-          tag = f'v{date}-{run}'
-
-          with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as f:
-              f.write(f'tag={tag}\n')
-
-          logs = subprocess.check_output(
-              ['git', 'log', '--pretty=format:- %s', '-10'],
-              encoding='utf-8', errors='replace'
-          )
-
-          body = f'''## 다운로드
-agent_Windows.zip 받아서 압축 해제 후 agent.exe 실행
-
-## 첫 실행 방법
-1. ZIP 압축 해제
-2. agent.exe 실행
-3. 설정 탭 -> Claude API Key 입력 -> 저장
-4. 세션 탭 -> 세션 시작
-
----
-## 수정사항
-{logs}
-'''
-          with open('release_body.txt', 'w', encoding='utf-8') as f:
-              f.write(body)
-          "
+        run: python .github/gen_release_notes.py ${{ github.run_number }}
 
       - name: GitHub Release 생성 및 EXE 업로드
         uses: softprops/action-gh-release@v2
