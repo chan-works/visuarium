@@ -3,6 +3,7 @@ import json
 import os
 import sounddevice as sd
 from typing import Callable
+from src.gui.waveform_widget import WaveformWidget
 
 CONFIG_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "config.json")
 
@@ -12,6 +13,8 @@ class SettingsPanel(ctk.CTkFrame):
         super().__init__(parent, **kwargs)
         self.config = config
         self.on_save = on_save
+        self._waveform: WaveformWidget = None
+        self._mic_testing = False
         self._build()
 
     def _build(self):
@@ -40,11 +43,28 @@ class SettingsPanel(ctk.CTkFrame):
         self._mic_options = self._get_mic_options()
         self.mic_var = ctk.StringVar(value=self.config.get("mic_name", "기본 장치"))
         self.mic_menu = ctk.CTkOptionMenu(section2, variable=self.mic_var,
-                                           values=list(self._mic_options.keys()))
-        self.mic_menu.pack(fill="x", pady=(0, 4))
+                                           values=list(self._mic_options.keys()),
+                                           command=self._on_mic_change)
+        self.mic_menu.pack(fill="x", pady=(0, 6))
 
+        # ── Waveform test ──────────────────────────────────────────────────
+        ctk.CTkLabel(section2, text="마이크 테스트",
+                     font=ctk.CTkFont(size=11), text_color="#888").pack(anchor="w")
+
+        self._waveform = WaveformWidget(section2, height=64)
+        self._waveform.pack(fill="x", pady=(2, 6))
+
+        self._test_btn = ctk.CTkButton(
+            section2, text="▶ 테스트 시작", width=120, height=26,
+            fg_color="#2C5F8A", hover_color="#1E4060",
+            font=ctk.CTkFont(size=12),
+            command=self._toggle_mic_test
+        )
+        self._test_btn.pack(anchor="w")
+
+        # ── VAD / Silence ──────────────────────────────────────────────────
         row2 = ctk.CTkFrame(section2, fg_color="transparent")
-        row2.pack(fill="x")
+        row2.pack(fill="x", pady=(8, 0))
         ctk.CTkLabel(row2, text="VAD 임계값").pack(side="left")
         self.vad_entry = ctk.CTkEntry(row2, width=70)
         self.vad_entry.insert(0, str(self.config.get("vad_threshold", 0.01)))
@@ -80,7 +100,6 @@ class SettingsPanel(ctk.CTkFrame):
         self.osc_addr_entry.insert(0, self.config.get("osc_address", "/visuarium/prompt"))
         self.osc_addr_entry.pack(fill="x", pady=(0, 4))
 
-        # WebSocket port
         row5 = ctk.CTkFrame(section3, fg_color="transparent")
         row5.pack(fill="x")
         ctk.CTkLabel(row5, text="WebSocket Port").pack(side="left")
@@ -96,6 +115,33 @@ class SettingsPanel(ctk.CTkFrame):
 
         self.status_label = ctk.CTkLabel(self, text="", text_color="gray")
         self.status_label.pack()
+
+    # ── Mic test ───────────────────────────────────────────────────────────
+
+    def _toggle_mic_test(self):
+        if self._mic_testing:
+            self._waveform.stop()
+            self._mic_testing = False
+            self._test_btn.configure(text="▶ 테스트 시작", fg_color="#2C5F8A")
+        else:
+            mic_index = self._mic_options.get(self.mic_var.get())
+            try:
+                self._waveform.start(mic_index)
+                self._mic_testing = True
+                self._test_btn.configure(text="■ 테스트 중지", fg_color="#8A2C2C")
+            except Exception as e:
+                self.status_label.configure(text=f"마이크 오류: {e}", text_color="#E74C3C")
+
+    def _on_mic_change(self, _):
+        if self._mic_testing:
+            self._waveform.stop()
+            mic_index = self._mic_options.get(self.mic_var.get())
+            try:
+                self._waveform.start(mic_index)
+            except Exception:
+                pass
+
+    # ── Helpers ────────────────────────────────────────────────────────────
 
     def _section(self, title: str) -> ctk.CTkFrame:
         ctk.CTkLabel(self, text=title, font=ctk.CTkFont(size=13, weight="bold"),
@@ -118,6 +164,12 @@ class SettingsPanel(ctk.CTkFrame):
         return options
 
     def _save(self):
+        # Stop mic test on save
+        if self._mic_testing:
+            self._waveform.stop()
+            self._mic_testing = False
+            self._test_btn.configure(text="▶ 테스트 시작", fg_color="#2C5F8A")
+
         try:
             mic_name = self.mic_var.get()
             mic_index = self._mic_options.get(mic_name)

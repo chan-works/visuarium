@@ -5,6 +5,7 @@ from typing import Callable, Optional
 from src.core.agent import VisuariumAgent
 from src.core.stt import STTEngine
 from src.core import database
+from src.gui.waveform_widget import WaveformWidget
 
 
 PROMPT_GUIDE = """🎨 프롬프트 가이드
@@ -98,6 +99,10 @@ class SessionPanel(ctk.CTkFrame):
                                            font=ctk.CTkFont(size=12), text_color="#888")
         self.session_label.pack(side="right", padx=8)
 
+        # ── Waveform ───────────────────────────────────────────────────────
+        self._waveform = WaveformWidget(self, height=52)
+        self._waveform.pack(fill="x", padx=16, pady=(0, 6))
+
         # ── Main content: guide + conversation ────────────────────────────
         content = ctk.CTkFrame(self, fg_color="transparent")
         content.pack(fill="both", expand=True, padx=16)
@@ -183,6 +188,7 @@ class SessionPanel(ctk.CTkFrame):
         self._set_status("● 듣는 중", "#2ECC71")
 
         self.stt.start()
+        self._waveform.start(self.config.get("mic_index"))
         self._start_timer()
 
         for tag in self.chat_box.tag_names():
@@ -195,6 +201,7 @@ class SessionPanel(ctk.CTkFrame):
     def stop_session(self):
         self.session_active = False
         self.stt.stop()
+        self._waveform.stop()
         self.start_btn.configure(state="normal")
         self.stop_btn.configure(state="disabled")
         self._set_status("● 대기 중", "#888888")
