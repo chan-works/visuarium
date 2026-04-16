@@ -99,9 +99,22 @@ class SessionPanel(ctk.CTkFrame):
                                            font=ctk.CTkFont(size=12), text_color="#888")
         self.session_label.pack(side="right", padx=8)
 
-        # ── Waveform ───────────────────────────────────────────────────────
-        self._waveform = WaveformWidget(self, height=52)
-        self._waveform.pack(fill="x", padx=16, pady=(0, 6))
+        # ── Waveform + live speech ─────────────────────────────────────────
+        wav_row = ctk.CTkFrame(self, fg_color="transparent")
+        wav_row.pack(fill="x", padx=16, pady=(0, 4))
+        wav_row.columnconfigure(0, weight=1)
+        wav_row.columnconfigure(1, weight=0)
+
+        self._waveform = WaveformWidget(wav_row, height=52)
+        self._waveform.grid(row=0, column=0, sticky="ew")
+
+        self._live_label = ctk.CTkLabel(
+            wav_row, text="",
+            font=ctk.CTkFont(family="Malgun Gothic", size=12),
+            text_color="#AAAAAA", width=180, anchor="w", wraplength=176,
+            justify="left"
+        )
+        self._live_label.grid(row=0, column=1, padx=(10, 0), sticky="w")
 
         # ── Main content: guide + conversation ────────────────────────────
         content = ctk.CTkFrame(self, fg_color="transparent")
@@ -196,12 +209,14 @@ class SessionPanel(ctk.CTkFrame):
         self.chat_box.configure(state="normal")
         self.chat_box.delete("1.0", "end")
         self.chat_box.configure(state="disabled")
+        self._live_label.configure(text="● 말씀해 주세요...", text_color="#888888")
         self._append_chat("시스템", "세션이 시작되었습니다. 마이크에 대고 말씀해 주세요!")
 
     def stop_session(self):
         self.session_active = False
         self.stt.stop()
         self._waveform.stop()
+        self._live_label.configure(text="")
         self.start_btn.configure(state="normal")
         self.stop_btn.configure(state="disabled")
         self._set_status("● 대기 중", "#888888")
@@ -220,9 +235,13 @@ class SessionPanel(ctk.CTkFrame):
     def _on_listening(self, is_speaking: bool):
         if is_speaking:
             self._set_status("🔴 음성 감지 중...", "#E74C3C")
+            self.after(0, lambda: self._live_label.configure(
+                text="🎤 음성 감지 중...", text_color="#E74C3C"))
         else:
             if self.session_active:
                 self._set_status("● 듣는 중", "#2ECC71")
+                self.after(0, lambda: self._live_label.configure(
+                    text="⏳ 인식 중...", text_color="#F39C12"))
 
     def _on_transcript(self, text: str, duration: float):
         if not self.session_active:
@@ -233,6 +252,9 @@ class SessionPanel(ctk.CTkFrame):
 
         self._append_chat(f"👤 관객 #{idx}", text)
         self._set_status("⏳ AI 응답 생성 중...", "#F39C12")
+        self.after(0, lambda t=text: self._live_label.configure(
+            text=f'"{t[:40]}{"..." if len(t) > 40 else ""}"',
+            text_color="#DDDDDD"))
 
         def _call_agent():
             try:
@@ -257,6 +279,7 @@ class SessionPanel(ctk.CTkFrame):
         self.on_prompt_ready(prompt)
         if self.session_active:
             self._set_status("● 듣는 중", "#2ECC71")
+            self._live_label.configure(text="● 말씀해 주세요...", text_color="#888888")
 
     def _append_chat(self, speaker: str, text: str):
         def _do():

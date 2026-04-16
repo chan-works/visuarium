@@ -9,25 +9,23 @@ import sounddevice as sd
 
 class WaveformWidget(ctk.CTkFrame):
     """
-    Real-time audio waveform display.
+    Real-time audio oscilloscope display.
+    Shows raw audio waveform (last ~0.1s) as a live line.
     Call start(mic_index) to begin monitoring, stop() to end.
     """
 
-    WIDTH = 400
-    HEIGHT = 80
     FPS = 30
-    HISTORY = 300   # number of RMS samples to keep for the scrolling bar graph
-    CHUNK = 1024
+    WINDOW = 1600   # samples to display at once (~0.1s at 16 kHz)
+    CHUNK = 512     # smaller chunk = more responsive
 
     def __init__(self, parent, height: int = 80, **kwargs):
         super().__init__(parent, fg_color="#0D0D0D", corner_radius=8, **kwargs)
         self.HEIGHT = height
 
-        self._queue: queue.Queue = queue.Queue(maxsize=60)
-        self._rms_history = np.zeros(self.HISTORY, dtype=np.float32)
+        self._queue: queue.Queue = queue.Queue(maxsize=120)
+        self._sample_buf = np.zeros(self.WINDOW, dtype=np.float32)
         self._running = False
         self._stream = None
-        self._mic_index: Optional[int] = None
 
         self._canvas = tk.Canvas(
             self, bg="#0D0D0D", highlightthickness=0,
@@ -36,7 +34,7 @@ class WaveformWidget(ctk.CTkFrame):
         self._canvas.pack(fill="both", expand=True, padx=4, pady=4)
         self._canvas.bind("<Configure>", self._on_resize)
 
-        self._current_w = self.WIDTH
+        self._current_w = 400
         self._after_id = None
         self._draw_idle()
 
@@ -45,9 +43,9 @@ class WaveformWidget(ctk.CTkFrame):
     def start(self, mic_index: Optional[int] = None):
         if self._running:
             self.stop()
-        self._mic_index = mic_index
+        self._sample_buf[:] = 0
         self._running = True
-        # Try requested device; fall back to default if invalid
+
         for device in ([mic_index, None] if mic_index is not None else [None]):
             try:
                 self._stream = sd.InputStream(
@@ -65,6 +63,7 @@ class WaveformWidget(ctk.CTkFrame):
                 if device is None:
                     self._running = False
                     return
+
         self._schedule_draw()
 
     def stop(self):
@@ -82,15 +81,14 @@ class WaveformWidget(ctk.CTkFrame):
             except Exception:
                 pass
             self._stream = None
-        self._rms_history[:] = 0
+        self._sample_buf[:] = 0
         self._draw_idle()
 
     # ── Internal ───────────────────────────────────────────────────────────
 
     def _audio_callback(self, indata, frames, time_info, status):
-        rms = float(np.sqrt(np.mean(indata ** 2)))
         try:
-            self._queue.put_nowait(rms)
+            self._queue.put_nowait(indata[:, 0].copy())
         except queue.Full:
             pass
 
@@ -102,18 +100,15 @@ class WaveformWidget(ctk.CTkFrame):
     def _update(self):
         if not self._running:
             return
-        # Drain queue into history
-        new_samples = []
+        # Drain all pending chunks
         while not self._queue.empty():
             try:
-                new_samples.append(self._queue.get_nowait())
+                chunk = self._queue.get_nowait()
+                n = len(chunk)
+                self._sample_buf = np.roll(self._sample_buf, -n)
+                self._sample_buf[-n:] = chunk
             except queue.Empty:
                 break
-
-        if new_samples:
-            n = len(new_samples)
-            self._rms_history = np.roll(self._rms_history, -n)
-            self._rms_history[-n:] = new_samples
 
         self._draw_waveform()
         self._schedule_draw()
@@ -128,7 +123,6 @@ class WaveformWidget(ctk.CTkFrame):
         c.delete("all")
         w = self._current_w
         h = self.HEIGHT
-        # Center line
         c.create_line(0, h // 2, w, h // 2, fill="#2A2A2A", width=1)
         c.create_text(w // 2, h // 2, text="마이크 비활성",
                       fill="#444", font=("Arial", 10))
@@ -140,35 +134,29 @@ class WaveformWidget(ctk.CTkFrame):
         h = self.HEIGHT
         cy = h // 2
 
-        # Background grid line
+        # Background center line
         c.create_line(0, cy, w, cy, fill="#1A1A1A", width=1)
 
-        n = self.HISTORY
-        bar_w = max(1, w / n)
-        max_rms = 0.15   # clamp ceiling
+        samples = self._sample_buf
+        n = len(samples)
 
-        for i, rms in enumerate(self._rms_history):
-            norm = min(rms / max_rms, 1.0)
-            bar_h = norm * (cy - 4)
-            if bar_h < 1:
-                continue
-            x = i * bar_w
-            # Color: green → yellow → red based on amplitude
-            if norm < 0.5:
-                r = int(norm * 2 * 255)
-                g = 220
-            else:
-                r = 220
-                g = int((1 - (norm - 0.5) * 2) * 220)
-            color = f"#{r:02x}{g:02x}44"
-            c.create_rectangle(
-                x, cy - bar_h, x + bar_w - 1, cy + bar_h,
-                fill=color, outline=""
-            )
+        # Peak RMS for color
+        rms = float(np.sqrt(np.mean(samples ** 2)))
+        if rms < 0.03:
+            color = "#00CC55"
+        elif rms < 0.12:
+            color = "#CCCC00"
+        else:
+            color = "#EE3322"
 
-        # Peak indicator line
-        peak = float(np.max(self._rms_history))
-        if peak > 0.005:
-            norm_peak = min(peak / max_rms, 1.0)
-            ph = norm_peak * (cy - 4)
-            c.create_line(0, cy - ph, w, cy - ph, fill="#FFFFFF33", width=1)
+        # Build polyline points
+        step = w / n
+        pts = []
+        for i, s in enumerate(samples):
+            x = i * step
+            y = cy - float(s) * (cy - 4)
+            y = max(2, min(h - 2, y))
+            pts.extend((x, y))
+
+        if len(pts) >= 4:
+            c.create_line(pts, fill=color, width=1, smooth=True)
