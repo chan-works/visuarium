@@ -1,0 +1,72 @@
+name: Build Windows EXE
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:  # 수동 실행 버튼
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: 코드 체크아웃
+        uses: actions/checkout@v4
+
+      - name: Python 3.11 설정
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: 의존성 설치
+        run: |
+          python -m pip install --upgrade pip
+          pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+          pip install anthropic openai-whisper sounddevice numpy customtkinter websockets python-osc openpyxl scipy
+          pip install pyinstaller
+
+      - name: config.json 기본값 생성
+        run: |
+          echo '{"api_key":"","model":"claude-opus-4-6","mic_index":null,"mic_name":"","osc_ip":"127.0.0.1","osc_port":9001,"osc_address":"/prompt","websocket_port":9000,"whisper_model":"base","vad_threshold":0.01,"silence_duration":1.5}' > config.json
+
+      - name: PyInstaller 빌드
+        run: |
+          pyinstaller build.spec --clean --noconfirm
+
+      - name: 빌드 결과 확인
+        run: |
+          dir dist\멀티턴대화형에이전트\
+
+      - name: ZIP 압축
+        run: |
+          Compress-Archive -Path "dist\멀티턴대화형에이전트\*" -DestinationPath "멀티턴대화형에이전트_Windows.zip"
+        shell: powershell
+
+      - name: 버전 태그 생성
+        id: version
+        run: |
+          $DATE = Get-Date -Format "yyyy.MM.dd"
+          $RUN = "${{ github.run_number }}"
+          echo "tag=v$DATE-$RUN" >> $env:GITHUB_OUTPUT
+        shell: powershell
+
+      - name: GitHub Release 생성 및 EXE 업로드
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: "멀티턴 대화형 에이전트 ${{ steps.version.outputs.tag }}"
+          body: |
+            ## 다운로드
+            아래 `멀티턴대화형에이전트_Windows.zip` 을 받아서 압축 해제 후 `멀티턴대화형에이전트.exe` 실행
+
+            ## 첫 실행 방법
+            1. ZIP 압축 해제
+            2. `멀티턴대화형에이전트.exe` 실행
+            3. ⚙ 설정 탭 → Claude API Key 입력 → 저장
+            4. 🎤 세션 탭 → 세션 시작
+          files: |
+            멀티턴대화형에이전트_Windows.zip
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
