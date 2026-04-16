@@ -45,12 +45,29 @@ jobs:
           Compress-Archive -Path "dist\agent\*" -DestinationPath "agent_Windows.zip"
         shell: powershell
 
-      - name: 버전 태그 생성
+      - name: 버전 및 릴리즈 노트 생성
         id: version
         run: |
           $DATE = Get-Date -Format "yyyy.MM.dd"
           $RUN = "${{ github.run_number }}"
           echo "tag=v$DATE-$RUN" >> $env:GITHUB_OUTPUT
+
+          $logs = git log --pretty=format:"- %s" -10
+          $body = @"
+## 📦 다운로드
+``agent_Windows.zip`` 받아서 압축 해제 후 ``agent.exe`` 실행
+
+## 🚀 첫 실행 방법
+1. ZIP 압축 해제
+2. ``agent.exe`` 실행
+3. ⚙ 설정 탭 → Claude API Key 입력 → 저장
+4. 🎤 세션 탭 → 세션 시작
+
+---
+## 🔄 수정사항
+$logs
+"@
+          $body | Out-File -FilePath release_body.txt -Encoding utf8
         shell: powershell
 
       - name: GitHub Release 생성 및 EXE 업로드
@@ -58,15 +75,7 @@ jobs:
         with:
           tag_name: ${{ steps.version.outputs.tag }}
           name: "멀티턴 대화형 에이전트 ${{ steps.version.outputs.tag }}"
-          body: |
-            ## 다운로드
-            아래 `agent_Windows.zip` 을 받아서 압축 해제 후 `agent.exe` 실행
-
-            ## 첫 실행 방법
-            1. ZIP 압축 해제
-            2. `agent.exe` 실행
-            3. ⚙ 설정 탭 → Claude API Key 입력 → 저장
-            4. 🎤 세션 탭 → 세션 시작
+          body-path: release_body.txt
           files: |
             agent_Windows.zip
           draft: false
