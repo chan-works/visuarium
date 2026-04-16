@@ -130,7 +130,7 @@ class SettingsPanel(ctk.CTkFrame):
                 self._mic_testing = True
                 self._test_btn.configure(text="■ 테스트 중지", fg_color="#8A2C2C")
             except Exception as e:
-                self.status_label.configure(text=f"마이크 오류: {e}", text_color="#E74C3C")
+                self.status_label.configure(text=f"마이크 오류 (기본 장치로 재시도됨)", text_color="#F39C12")
 
     def _on_mic_change(self, _):
         if self._mic_testing:

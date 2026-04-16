@@ -47,15 +47,24 @@ class WaveformWidget(ctk.CTkFrame):
             self.stop()
         self._mic_index = mic_index
         self._running = True
-        self._stream = sd.InputStream(
-            samplerate=16000,
-            channels=1,
-            dtype="float32",
-            blocksize=self.CHUNK,
-            device=mic_index,
-            callback=self._audio_callback,
-        )
-        self._stream.start()
+        # Try requested device; fall back to default if invalid
+        for device in ([mic_index, None] if mic_index is not None else [None]):
+            try:
+                self._stream = sd.InputStream(
+                    samplerate=16000,
+                    channels=1,
+                    dtype="float32",
+                    blocksize=self.CHUNK,
+                    device=device,
+                    callback=self._audio_callback,
+                )
+                self._stream.start()
+                break
+            except Exception:
+                self._stream = None
+                if device is None:
+                    self._running = False
+                    return
         self._schedule_draw()
 
     def stop(self):
