@@ -149,8 +149,8 @@ class SessionPanel(ctk.CTkFrame):
 
         def _load():
             def _status(msg):
-                self._set_status(msg)
-                self._append_chat("시스템", msg)
+                self.after(0, lambda m=msg: self._set_status(m))
+                self.after(0, lambda m=msg: self._append_chat("시스템", m))
 
             self.stt.load_model(status_callback=_status)
 

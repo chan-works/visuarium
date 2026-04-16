@@ -28,16 +28,20 @@ class STTEngine:
         self.chunk_size = 1024
 
     def load_model(self, status_callback: Optional[Callable[[str], None]] = None):
-        if status_callback:
-            status_callback(f"Whisper 모델 로딩 중... ({self.model_name})")
+        def _cb(msg):
+            if status_callback:
+                try:
+                    status_callback(msg)
+                except Exception:
+                    pass
+
+        _cb(f"Whisper 모델 로딩 중... ({self.model_name})")
         try:
             self.model = whisper.load_model(self.model_name)
-            if status_callback:
-                status_callback("모델 로드 완료")
+            _cb("모델 로드 완료")
         except Exception as e:
             self.model = None
-            if status_callback:
-                status_callback(f"모델 로드 실패: {e}")
+            _cb(f"모델 로드 실패: {e}")
 
     def start(self):
         if self._running:
