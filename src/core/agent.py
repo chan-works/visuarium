@@ -1,7 +1,7 @@
 import anthropic
 from typing import Optional
 
-SYSTEM_PROMPT = """You are a creative visual prompt expander for an AI art installation called Visuarium.
+SYSTEM_PROMPT = """You are a creative visual prompt expander for an AI art installation called 멀티턴 대화형 에이전트.
 Your role is to guide visitors through a short conversation to build a rich, detailed image generation prompt.
 
 # YOUR GOAL

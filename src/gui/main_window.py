@@ -10,7 +10,7 @@ class MainWindow(ctk.CTk):
     def __init__(self, config: dict):
         super().__init__()
         self.config_data = config
-        self.title("Visuarium — AI Media Art Installation")
+        self.title("멀티턴 대화형 에이전트")
         self.geometry("1000x720")
         self.minsize(900, 650)
         ctk.set_appearance_mode("dark")
@@ -35,7 +35,7 @@ class MainWindow(ctk.CTk):
         sidebar.pack(side="left", fill="y")
         sidebar.pack_propagate(False)
 
-        logo = ctk.CTkLabel(sidebar, text="VISUARIUM",
+        logo = ctk.CTkLabel(sidebar, text="멀티턴 대화형\n에이전트",
                              font=ctk.CTkFont(size=16, weight="bold"),
                              text_color="#A0C4E4")
         logo.pack(pady=(24, 32))
