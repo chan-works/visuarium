@@ -47,28 +47,25 @@ jobs:
 
       - name: 버전 및 릴리즈 노트 생성
         id: version
+        shell: powershell
         run: |
           $DATE = Get-Date -Format "yyyy.MM.dd"
           $RUN = "${{ github.run_number }}"
-          echo "tag=v$DATE-$RUN" >> $env:GITHUB_OUTPUT
+          "tag=v$DATE-$RUN" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
 
-          $logs = git log --pretty=format:"- %s" -10
-          $body = @"
-## 📦 다운로드
-``agent_Windows.zip`` 받아서 압축 해제 후 ``agent.exe`` 실행
+          $logs = (git log --pretty=format:"- %s" -10) -join "`n"
 
-## 🚀 첫 실행 방법
-1. ZIP 압축 해제
-2. ``agent.exe`` 실행
-3. ⚙ 설정 탭 → Claude API Key 입력 → 저장
-4. 🎤 세션 탭 → 세션 시작
+          $header = "## 📦 다운로드`n"
+          $header += "``agent_Windows.zip`` 받아서 압축 해제 후 ``agent.exe`` 실행`n`n"
+          $header += "## 🚀 첫 실행 방법`n"
+          $header += "1. ZIP 압축 해제`n"
+          $header += "2. ``agent.exe`` 실행`n"
+          $header += "3. 설정 탭 → Claude API Key 입력 → 저장`n"
+          $header += "4. 세션 탭 → 세션 시작`n`n"
+          $header += "---`n## 🔄 수정사항`n"
+          $header += $logs
 
----
-## 🔄 수정사항
-$logs
-"@
-          $body | Out-File -FilePath release_body.txt -Encoding utf8
-        shell: powershell
+          $header | Out-File -FilePath release_body.txt -Encoding utf8
 
       - name: GitHub Release 생성 및 EXE 업로드
         uses: softprops/action-gh-release@v2
