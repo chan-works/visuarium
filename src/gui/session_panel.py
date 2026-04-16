@@ -145,8 +145,21 @@ class SessionPanel(ctk.CTkFrame):
         self._append_chat("시스템", "Whisper 모델을 로딩 중입니다...")
 
     def _load_model(self):
+        self.start_btn.configure(state="disabled")
+
         def _load():
-            self.stt.load_model(status_callback=self._set_status)
+            def _status(msg):
+                self._set_status(msg)
+                self._append_chat("시스템", msg)
+
+            self.stt.load_model(status_callback=_status)
+
+            if self.stt.model is not None:
+                self.after(0, lambda: self.start_btn.configure(state="normal"))
+                self.after(0, lambda: self._set_status("● 대기 중 (시작 버튼을 눌러주세요)", "#888888"))
+            else:
+                self.after(0, lambda: self._set_status("⚠ 모델 로드 실패 — 설정에서 Whisper 모델을 확인하세요", "#E74C3C"))
+
         threading.Thread(target=_load, daemon=True).start()
 
     def _set_status(self, text: str, color: str = "#888888"):
@@ -155,9 +168,6 @@ class SessionPanel(ctk.CTkFrame):
     def start_session(self):
         if not self.config.get("api_key"):
             self._append_chat("⚠ 오류", "API Key가 설정되지 않았습니다. [설정] 탭에서 입력해 주세요.")
-            return
-        if not self.stt.model:
-            self._append_chat("⚠ 오류", "Whisper 모델이 아직 로딩 중입니다. 잠시 기다려 주세요.")
             return
 
         self.session_id = database.create_session()
