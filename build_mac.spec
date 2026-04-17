@@ -6,6 +6,9 @@ from PyInstaller.utils.hooks import collect_data_files, collect_submodules
 
 block_cipher = None
 
+# 버전은 build_mac.sh에서 APP_VERSION 환경변수로 전달
+_version = os.environ.get('APP_VERSION', '1.0.0')
+
 # ── Faster-Whisper 패키지 데이터 ──────────────────────────────────────────
 faster_whisper_datas = collect_data_files('faster_whisper')
 
@@ -109,8 +112,8 @@ app = BUNDLE(
     bundle_identifier='com.visuarium.agent',
     info_plist={
         'CFBundleDisplayName': 'Agent',
-        'CFBundleShortVersionString': '1.0.0',
-        'CFBundleVersion': '1.0.0',
+        'CFBundleShortVersionString': _version,
+        'CFBundleVersion': _version,
         'NSMicrophoneUsageDescription': '음성 인식을 위해 마이크 접근이 필요합니다.',
         'NSHighResolutionCapable': True,
         'LSMinimumSystemVersion': '11.0',
