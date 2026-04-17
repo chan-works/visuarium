@@ -16,7 +16,7 @@ faster_whisper_datas = collect_data_files('faster_whisper')
 hf_hub = os.path.join(os.path.expanduser('~'), '.cache', 'huggingface', 'hub')
 model_datas = []
 
-for model_name in ['base']:
+for model_name in ['base', 'small']:
     pattern = os.path.join(hf_hub, f'models--Systran--faster-whisper-{model_name}',
                            'snapshots', '*')
     snapshots = glob.glob(pattern)

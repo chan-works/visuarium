@@ -151,10 +151,12 @@ class STTEngine:
         try:
             segments, info = self.model.transcribe(
                 audio,
-                beam_size=1,        # 빠른 추론 (greedy)
-                language="ko",      # 한국어 고정 (자동감지보다 빠르고 정확)
-                vad_filter=False,   # 우리 VAD 이미 처리함 — 이중 필터 제거
+                beam_size=5,        # 정확도 우선 (1=greedy 빠름, 5=beam search 정확)
+                language="ko",      # 한국어 고정
+                vad_filter=False,   # 우리 VAD 이미 처리함
                 no_speech_threshold=0.6,
+                temperature=0.0,    # 결정론적 출력 (환각 방지)
+                condition_on_previous_text=False,  # 이전 발화 영향 차단
             )
             text = "".join(s.text for s in segments).strip()
             print(f"[STT] 인식 결과: '{text}' (언어: {info.language}, {duration:.1f}초)")
