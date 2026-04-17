@@ -1,4 +1,3 @@
-import anthropic
 import re
 from typing import Optional
 
@@ -33,28 +32,19 @@ Your response:
 
 [PROMPT]a beautiful flower, detailed botanical illustration[/PROMPT]"
 
-Visitor says: "장미, 밤에"
-Your response:
-"밤의 장미, 신비롭네요! 어떤 스타일로 표현할까요? 사실적인 그림, 인상주의, 아니면 특정 화가 스타일이 있나요?
-
-[PROMPT]a red rose blooming at night, moonlight casting soft shadows, detailed petals glistening with dew[/PROMPT]"
-
 Always include [PROMPT]...[/PROMPT] in every single response, no exceptions."""
 
 
 def extract_prompt(response_text: str) -> str:
-    """Extract the prompt from [PROMPT]...[/PROMPT] tags."""
     start = response_text.find("[PROMPT]")
     end = response_text.find("[/PROMPT]")
     if start != -1 and end != -1:
         return response_text[start + 8:end].strip()
-    # Fallback: return last line if no tags found
     lines = [l.strip() for l in response_text.strip().split("\n") if l.strip()]
     return lines[-1] if lines else response_text.strip()
 
 
 def get_display_text(response_text: str) -> str:
-    """Remove the [PROMPT] block from display text."""
     start = response_text.find("[PROMPT]")
     if start != -1:
         return response_text[:start].strip()
@@ -62,38 +52,83 @@ def get_display_text(response_text: str) -> str:
 
 
 def _has_non_ascii(text: str) -> bool:
-    """Return True if text contains non-ASCII (e.g. Korean) characters."""
     return bool(re.search(r'[^\x00-\x7F]', text))
 
 
-def translate_to_english(prompt: str, client: anthropic.Anthropic) -> str:
-    """
-    If the prompt contains non-English characters, translate it to English.
-    Uses claude-haiku-4-5 for fast, cheap translation.
-    """
-    if not _has_non_ascii(prompt):
-        return prompt  # Already English — skip API call
+# ── Provider-specific helpers ───────────────────────────────────────────────
 
+def _chat_claude(client, model: str, messages: list) -> str:
+    import anthropic as _anthropic
+    response = client.messages.create(
+        model=model,
+        max_tokens=512,
+        system=SYSTEM_PROMPT,
+        messages=messages,
+    )
+    return response.content[0].text
+
+
+def _translate_claude(client, text: str) -> str:
+    import anthropic as _anthropic
     response = client.messages.create(
         model="claude-haiku-4-5",
         max_tokens=256,
         system="You are a translator. Translate the given image generation prompt to English only. Output ONLY the translated prompt, no explanations.",
-        messages=[{"role": "user", "content": prompt}],
+        messages=[{"role": "user", "content": text}],
     )
     return response.content[0].text.strip()
 
 
+def _chat_openai(client, model: str, messages: list) -> str:
+    response = client.chat.completions.create(
+        model=model,
+        max_tokens=512,
+        messages=[{"role": "system", "content": SYSTEM_PROMPT}] + messages,
+    )
+    return response.choices[0].message.content
+
+
+def _translate_openai(client, text: str) -> str:
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        max_tokens=256,
+        messages=[
+            {"role": "system", "content": "You are a translator. Translate the given image generation prompt to English only. Output ONLY the translated prompt, no explanations."},
+            {"role": "user", "content": text},
+        ],
+    )
+    return response.choices[0].message.content.strip()
+
+
+# ── Main agent class ────────────────────────────────────────────────────────
+
 class VisuariumAgent:
-    def __init__(self, api_key: str, model: str = "claude-opus-4-6"):
+    PROVIDERS = ["Claude", "OpenAI"]
+
+    # Default models per provider
+    DEFAULT_MODELS = {
+        "Claude": "claude-opus-4-6",
+        "OpenAI": "gpt-4o",
+    }
+
+    def __init__(self, api_key: str, model: str = "claude-opus-4-6",
+                 provider: str = "Claude"):
         self.api_key = api_key
         self.model = model
+        self.provider = provider  # "Claude" or "OpenAI"
         self.messages = []
         self.current_prompt = ""
         self._client = None
 
     def _get_client(self):
-        if self._client is None or self._client.api_key != self.api_key:
-            self._client = anthropic.Anthropic(api_key=self.api_key)
+        if self._client is None or getattr(self._client, '_api_key_ref', None) != self.api_key:
+            if self.provider == "Claude":
+                import anthropic
+                self._client = anthropic.Anthropic(api_key=self.api_key)
+            else:
+                from openai import OpenAI
+                self._client = OpenAI(api_key=self.api_key)
+            self._client._api_key_ref = self.api_key
         return self._client
 
     def reset(self):
@@ -101,32 +136,37 @@ class VisuariumAgent:
         self.current_prompt = ""
 
     def chat(self, user_text: str) -> tuple[str, str]:
-        """
-        Send user input, get AI response.
-        Returns (display_text, prompt_text)
-        """
         self.messages.append({"role": "user", "content": user_text})
 
         client = self._get_client()
-        response = client.messages.create(
-            model=self.model,
-            max_tokens=512,
-            system=SYSTEM_PROMPT,
-            messages=self.messages,
-        )
 
-        assistant_text = response.content[0].text
+        if self.provider == "Claude":
+            assistant_text = _chat_claude(client, self.model, self.messages)
+        else:
+            assistant_text = _chat_openai(client, self.model, self.messages)
+
         self.messages.append({"role": "assistant", "content": assistant_text})
 
         prompt = extract_prompt(assistant_text)
         display = get_display_text(assistant_text)
 
+        if prompt and _has_non_ascii(prompt):
+            if self.provider == "Claude":
+                prompt = _translate_claude(client, prompt)
+            else:
+                prompt = _translate_openai(client, prompt)
+
         if prompt:
-            prompt = translate_to_english(prompt, client)
             self.current_prompt = prompt
 
         return display, self.current_prompt
 
     def update_api_key(self, new_key: str):
         self.api_key = new_key
+        self._client = None
+
+    def update_provider(self, provider: str, api_key: str, model: str):
+        self.provider = provider
+        self.api_key = api_key
+        self.model = model
         self._client = None

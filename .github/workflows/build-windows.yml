@@ -25,7 +25,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
-          pip install anthropic openai-whisper sounddevice numpy customtkinter websockets python-osc openpyxl scipy
+          pip install anthropic openai openai-whisper sounddevice numpy customtkinter websockets python-osc openpyxl scipy
           pip install pyinstaller
 
       - name: config.json 기본값 생성

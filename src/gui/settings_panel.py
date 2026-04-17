@@ -21,21 +21,57 @@ class SettingsPanel(ctk.CTkFrame):
         title = ctk.CTkLabel(self, text="⚙ 설정", font=ctk.CTkFont(size=18, weight="bold"))
         title.pack(pady=(16, 10), padx=20, anchor="w")
 
-        # ── API Key ────────────────────────────────────────────────────────
-        section = self._section("Claude API")
-        ctk.CTkLabel(section, text="API Key").pack(anchor="w")
-        self.api_entry = ctk.CTkEntry(section, width=380, show="*",
-                                      placeholder_text="sk-ant-api...")
-        self.api_entry.pack(fill="x", pady=(0, 4))
-        self.api_entry.insert(0, self.config.get("api_key", ""))
+        # ── API Provider ────────────────────────────────────────────────────
+        section = self._section("AI 제공자")
 
-        row = ctk.CTkFrame(section, fg_color="transparent")
-        row.pack(fill="x", pady=(0, 4))
-        ctk.CTkLabel(row, text="모델").pack(side="left")
-        self.model_var = ctk.StringVar(value=self.config.get("model", "claude-opus-4-6"))
-        model_menu = ctk.CTkOptionMenu(row, variable=self.model_var,
-                                        values=["claude-opus-4-6", "claude-sonnet-4-6", "claude-haiku-4-5"])
-        model_menu.pack(side="left", padx=(8, 0))
+        row_p = ctk.CTkFrame(section, fg_color="transparent")
+        row_p.pack(fill="x", pady=(0, 8))
+        ctk.CTkLabel(row_p, text="제공자").pack(side="left")
+        self.provider_var = ctk.StringVar(value=self.config.get("provider", "Claude"))
+        provider_menu = ctk.CTkOptionMenu(
+            row_p, variable=self.provider_var,
+            values=["Claude", "OpenAI"],
+            command=self._on_provider_change
+        )
+        provider_menu.pack(side="left", padx=(8, 0))
+
+        # Claude section
+        self._claude_frame = ctk.CTkFrame(section, fg_color="transparent")
+        self._claude_frame.pack(fill="x")
+
+        ctk.CTkLabel(self._claude_frame, text="Claude API Key").pack(anchor="w")
+        self.claude_key_entry = ctk.CTkEntry(self._claude_frame, width=380, show="*",
+                                              placeholder_text="sk-ant-api...")
+        self.claude_key_entry.pack(fill="x", pady=(0, 4))
+        self.claude_key_entry.insert(0, self.config.get("claude_api_key", self.config.get("api_key", "")))
+
+        row_cm = ctk.CTkFrame(self._claude_frame, fg_color="transparent")
+        row_cm.pack(fill="x", pady=(0, 4))
+        ctk.CTkLabel(row_cm, text="모델").pack(side="left")
+        self.claude_model_var = ctk.StringVar(value=self.config.get("claude_model", "claude-opus-4-6"))
+        ctk.CTkOptionMenu(row_cm, variable=self.claude_model_var,
+                          values=["claude-opus-4-6", "claude-sonnet-4-6", "claude-haiku-4-5"]
+                          ).pack(side="left", padx=(8, 0))
+
+        # OpenAI section
+        self._openai_frame = ctk.CTkFrame(section, fg_color="transparent")
+        self._openai_frame.pack(fill="x")
+
+        ctk.CTkLabel(self._openai_frame, text="OpenAI API Key").pack(anchor="w")
+        self.openai_key_entry = ctk.CTkEntry(self._openai_frame, width=380, show="*",
+                                              placeholder_text="sk-...")
+        self.openai_key_entry.pack(fill="x", pady=(0, 4))
+        self.openai_key_entry.insert(0, self.config.get("openai_api_key", ""))
+
+        row_om = ctk.CTkFrame(self._openai_frame, fg_color="transparent")
+        row_om.pack(fill="x", pady=(0, 4))
+        ctk.CTkLabel(row_om, text="모델").pack(side="left")
+        self.openai_model_var = ctk.StringVar(value=self.config.get("openai_model", "gpt-4o"))
+        ctk.CTkOptionMenu(row_om, variable=self.openai_model_var,
+                          values=["gpt-4o", "gpt-4o-mini", "gpt-4-turbo"]
+                          ).pack(side="left", padx=(8, 0))
+
+        self._on_provider_change(self.provider_var.get())
 
         # ── Microphone ─────────────────────────────────────────────────────
         section2 = self._section("마이크 설정")
@@ -47,10 +83,9 @@ class SettingsPanel(ctk.CTkFrame):
                                            command=self._on_mic_change)
         self.mic_menu.pack(fill="x", pady=(0, 6))
 
-        # ── Waveform test ──────────────────────────────────────────────────
+        # Waveform test
         ctk.CTkLabel(section2, text="마이크 테스트",
                      font=ctk.CTkFont(size=11), text_color="#888").pack(anchor="w")
-
         self._waveform = WaveformWidget(section2, height=64)
         self._waveform.pack(fill="x", pady=(2, 6))
 
@@ -62,7 +97,7 @@ class SettingsPanel(ctk.CTkFrame):
         )
         self._test_btn.pack(anchor="w")
 
-        # ── VAD / Silence ──────────────────────────────────────────────────
+        # VAD / Silence
         row2 = ctk.CTkFrame(section2, fg_color="transparent")
         row2.pack(fill="x", pady=(8, 0))
         ctk.CTkLabel(row2, text="VAD 임계값").pack(side="left")
@@ -80,7 +115,8 @@ class SettingsPanel(ctk.CTkFrame):
         ctk.CTkLabel(row3, text="Whisper 모델").pack(side="left")
         self.whisper_var = ctk.StringVar(value=self.config.get("whisper_model", "base"))
         ctk.CTkOptionMenu(row3, variable=self.whisper_var,
-                          values=["tiny", "base", "small", "medium", "large"]).pack(side="left", padx=(8, 0))
+                          values=["tiny", "base", "small", "medium", "large"]
+                          ).pack(side="left", padx=(8, 0))
 
         # ── OSC ────────────────────────────────────────────────────────────
         section3 = self._section("OSC 설정")
@@ -116,6 +152,16 @@ class SettingsPanel(ctk.CTkFrame):
         self.status_label = ctk.CTkLabel(self, text="", text_color="gray")
         self.status_label.pack()
 
+    # ── Provider toggle ────────────────────────────────────────────────────
+
+    def _on_provider_change(self, value: str):
+        if value == "Claude":
+            self._claude_frame.pack(fill="x")
+            self._openai_frame.pack_forget()
+        else:
+            self._claude_frame.pack_forget()
+            self._openai_frame.pack(fill="x")
+
     # ── Mic test ───────────────────────────────────────────────────────────
 
     def _toggle_mic_test(self):
@@ -130,7 +176,7 @@ class SettingsPanel(ctk.CTkFrame):
                 self._mic_testing = True
                 self._test_btn.configure(text="■ 테스트 중지", fg_color="#8A2C2C")
             except Exception as e:
-                self.status_label.configure(text=f"마이크 오류 (기본 장치로 재시도됨)", text_color="#F39C12")
+                self.status_label.configure(text="마이크 오류 (기본 장치로 재시도됨)", text_color="#F39C12")
 
     def _on_mic_change(self, _):
         if self._mic_testing:
@@ -164,19 +210,32 @@ class SettingsPanel(ctk.CTkFrame):
         return options
 
     def _save(self):
-        # Stop mic test on save
         if self._mic_testing:
             self._waveform.stop()
             self._mic_testing = False
             self._test_btn.configure(text="▶ 테스트 시작", fg_color="#2C5F8A")
 
         try:
+            provider = self.provider_var.get()
             mic_name = self.mic_var.get()
             mic_index = self._mic_options.get(mic_name)
 
+            # Active API key & model based on provider
+            if provider == "Claude":
+                active_api_key = self.claude_key_entry.get().strip()
+                active_model = self.claude_model_var.get()
+            else:
+                active_api_key = self.openai_key_entry.get().strip()
+                active_model = self.openai_model_var.get()
+
             new_config = {
-                "api_key": self.api_entry.get().strip(),
-                "model": self.model_var.get(),
+                "provider": provider,
+                "api_key": active_api_key,       # active key (for legacy compat)
+                "model": active_model,            # active model
+                "claude_api_key": self.claude_key_entry.get().strip(),
+                "claude_model": self.claude_model_var.get(),
+                "openai_api_key": self.openai_key_entry.get().strip(),
+                "openai_model": self.openai_model_var.get(),
                 "mic_index": mic_index,
                 "mic_name": mic_name,
                 "osc_ip": self.osc_ip_entry.get().strip(),

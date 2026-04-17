@@ -47,7 +47,8 @@ class SessionPanel(ctk.CTkFrame):
 
         self.agent = VisuariumAgent(
             api_key=config.get("api_key", ""),
-            model=config.get("model", "claude-opus-4-6")
+            model=config.get("model", "claude-opus-4-6"),
+            provider=config.get("provider", "Claude"),
         )
         self.stt = STTEngine(
             model_name=config.get("whisper_model", "base"),
@@ -292,8 +293,11 @@ class SessionPanel(ctk.CTkFrame):
 
     def update_config(self, config: dict):
         self.config = config
-        self.agent.update_api_key(config.get("api_key", ""))
-        self.agent.model = config.get("model", "claude-opus-4-6")
+        self.agent.update_provider(
+            provider=config.get("provider", "Claude"),
+            api_key=config.get("api_key", ""),
+            model=config.get("model", "claude-opus-4-6"),
+        )
         self.stt.mic_index = config.get("mic_index")
         self.stt.vad_threshold = config.get("vad_threshold", 0.01)
         self.stt.silence_duration = config.get("silence_duration", 1.5)
