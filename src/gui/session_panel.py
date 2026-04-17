@@ -59,6 +59,7 @@ class SessionPanel(ctk.CTkFrame):
             silence_duration=config.get("silence_duration", 1.5),
             on_transcript=self._on_transcript,
             on_listening=self._on_listening,
+            on_audio=self._on_stt_audio,
         )
 
         self._build()
@@ -216,7 +217,7 @@ class SessionPanel(ctk.CTkFrame):
         self._append_chat("시스템", "마이크에 대고 말씀해 주세요. 멈추면 자동 인식됩니다.")
 
         self.stt.start()
-        self._waveform.start(self.config.get("mic_index"))
+        self._waveform.start_feed()   # STT 스트림 데이터 공유 — 별도 마이크 스트림 없음
         self._start_timer()
 
     def stop_session(self):
@@ -238,6 +239,10 @@ class SessionPanel(ctk.CTkFrame):
                 ))
                 time.sleep(0.5)
         threading.Thread(target=update, daemon=True).start()
+
+    def _on_stt_audio(self, samples):
+        """STT 오디오 콜백 → waveform으로 전달."""
+        self._waveform.feed(samples)
 
     def _on_listening(self, is_speaking: bool):
         if is_speaking:

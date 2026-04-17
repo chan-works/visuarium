@@ -40,6 +40,23 @@ class WaveformWidget(ctk.CTkFrame):
 
     # ── Public API ─────────────────────────────────────────────────────────
 
+    def feed(self, samples: np.ndarray):
+        """STT 스트림에서 오디오 데이터를 직접 받을 때 사용 (별도 마이크 스트림 불필요)."""
+        if not self._running:
+            return
+        try:
+            self._queue.put_nowait(samples)
+        except queue.Full:
+            pass
+
+    def start_feed(self):
+        """외부 오디오 피드 모드로 시작 — 별도 마이크 스트림을 열지 않음."""
+        if self._running:
+            self.stop()
+        self._sample_buf[:] = 0
+        self._running = True
+        self._schedule_draw()
+
     def start(self, mic_index: Optional[int] = None):
         if self._running:
             self.stop()

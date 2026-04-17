@@ -25,13 +25,15 @@ class STTEngine:
     def __init__(self, model_name: str = "base", mic_index: Optional[int] = None,
                  vad_threshold: float = 0.01, silence_duration: float = 1.5,
                  on_transcript: Optional[Callable[[str, float], None]] = None,
-                 on_listening: Optional[Callable[[bool], None]] = None):
+                 on_listening: Optional[Callable[[bool], None]] = None,
+                 on_audio: Optional[Callable[[np.ndarray], None]] = None):
         self.model_name = model_name
         self.mic_index = mic_index
         self.vad_threshold = vad_threshold
         self.silence_duration = silence_duration
         self.on_transcript = on_transcript
         self.on_listening = on_listening
+        self.on_audio = on_audio
 
         self.model = None
         self._running = False
@@ -89,8 +91,11 @@ class STTEngine:
         speech_start = None
 
         def audio_callback(indata, frames, time_info, status):
-            rms = float(np.sqrt(np.mean(indata ** 2)))
+            chunk = indata[:, 0].copy()
+            rms = float(np.sqrt(np.mean(chunk ** 2)))
             self._audio_queue.put((indata.copy(), rms))
+            if self.on_audio:
+                self.on_audio(chunk)
 
         # Try configured device, fall back to default if invalid
         stream_device = self.mic_index
