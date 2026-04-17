@@ -125,26 +125,42 @@ class SettingsPanel(ctk.CTkFrame):
 
         # ── OSC ────────────────────────────────────────────────────────────
         section3 = self._section("OSC 설정")
-        row4 = ctk.CTkFrame(section3, fg_color="transparent")
-        row4.pack(fill="x", pady=(0, 4))
-        ctk.CTkLabel(row4, text="IP").pack(side="left")
-        self.osc_ip_entry = ctk.CTkEntry(row4, width=130)
+
+        # 공통 IP
+        row_ip = ctk.CTkFrame(section3, fg_color="transparent")
+        row_ip.pack(fill="x", pady=(0, 8))
+        ctk.CTkLabel(row_ip, text="IP").pack(side="left")
+        self.osc_ip_entry = ctk.CTkEntry(row_ip, width=160)
         self.osc_ip_entry.insert(0, self.config.get("osc_ip", "127.0.0.1"))
-        self.osc_ip_entry.pack(side="left", padx=(8, 16))
-        ctk.CTkLabel(row4, text="Port").pack(side="left")
-        self.osc_port_entry = ctk.CTkEntry(row4, width=80)
+        self.osc_ip_entry.pack(side="left", padx=(8, 0))
+
+        # 프롬프트 OSC
+        ctk.CTkLabel(section3, text="프롬프트 OSC  (최종 이미지 생성 프롬프트)",
+                     font=ctk.CTkFont(size=11), text_color="#AAAAAA").pack(anchor="w", pady=(0, 2))
+        row_prompt = ctk.CTkFrame(section3, fg_color="transparent")
+        row_prompt.pack(fill="x", pady=(0, 8))
+        ctk.CTkLabel(row_prompt, text="Port").pack(side="left")
+        self.osc_port_entry = ctk.CTkEntry(row_prompt, width=70)
         self.osc_port_entry.insert(0, str(self.config.get("osc_port", 9001)))
-        self.osc_port_entry.pack(side="left", padx=(8, 0))
-
-        ctk.CTkLabel(section3, text="프롬프트 OSC Address  (최종 이미지 생성 프롬프트)").pack(anchor="w")
-        self.osc_prompt_addr_entry = ctk.CTkEntry(section3)
+        self.osc_port_entry.pack(side="left", padx=(6, 12))
+        ctk.CTkLabel(row_prompt, text="Address").pack(side="left")
+        self.osc_prompt_addr_entry = ctk.CTkEntry(row_prompt, width=160)
         self.osc_prompt_addr_entry.insert(0, self.config.get("osc_prompt_address", "/agent/prompt"))
-        self.osc_prompt_addr_entry.pack(fill="x", pady=(0, 4))
+        self.osc_prompt_addr_entry.pack(side="left", padx=(6, 0))
 
-        ctk.CTkLabel(section3, text="대화 OSC Address  (사용자 발화 / AI 응답)").pack(anchor="w")
-        self.osc_chat_addr_entry = ctk.CTkEntry(section3)
+        # 대화 OSC
+        ctk.CTkLabel(section3, text="대화 OSC  (사용자 발화 / AI 응답)",
+                     font=ctk.CTkFont(size=11), text_color="#AAAAAA").pack(anchor="w", pady=(0, 2))
+        row_chat = ctk.CTkFrame(section3, fg_color="transparent")
+        row_chat.pack(fill="x", pady=(0, 4))
+        ctk.CTkLabel(row_chat, text="Port").pack(side="left")
+        self.osc_chat_port_entry = ctk.CTkEntry(row_chat, width=70)
+        self.osc_chat_port_entry.insert(0, str(self.config.get("osc_chat_port", 9002)))
+        self.osc_chat_port_entry.pack(side="left", padx=(6, 12))
+        ctk.CTkLabel(row_chat, text="Address").pack(side="left")
+        self.osc_chat_addr_entry = ctk.CTkEntry(row_chat, width=160)
         self.osc_chat_addr_entry.insert(0, self.config.get("osc_chat_address", "/agent/chat"))
-        self.osc_chat_addr_entry.pack(fill="x", pady=(0, 4))
+        self.osc_chat_addr_entry.pack(side="left", padx=(6, 0))
 
         row5 = ctk.CTkFrame(section3, fg_color="transparent")
         row5.pack(fill="x")
@@ -307,6 +323,7 @@ class SettingsPanel(ctk.CTkFrame):
                 "mic_name": mic_name,
                 "osc_ip": self.osc_ip_entry.get().strip(),
                 "osc_port": int(self.osc_port_entry.get().strip()),
+                "osc_chat_port": int(self.osc_chat_port_entry.get().strip()),
                 "osc_prompt_address": self.osc_prompt_addr_entry.get().strip(),
                 "osc_chat_address": self.osc_chat_addr_entry.get().strip(),
                 "websocket_port": int(self.ws_port_entry.get().strip()),

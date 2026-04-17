@@ -23,6 +23,7 @@ class MainWindow(ctk.CTk):
         self.osc_sender = OSCSender(
             ip=config.get("osc_ip", "127.0.0.1"),
             port=config.get("osc_port", 9001),
+            chat_port=config.get("osc_chat_port", 9002),
             prompt_address=config.get("osc_prompt_address", "/agent/prompt"),
             chat_address=config.get("osc_chat_address", "/agent/chat"),
         )
@@ -108,6 +109,7 @@ class MainWindow(ctk.CTk):
         self.osc_sender.update(
             ip=new_config.get("osc_ip", "127.0.0.1"),
             port=new_config.get("osc_port", 9001),
+            chat_port=new_config.get("osc_chat_port", 9002),
             prompt_address=new_config.get("osc_prompt_address", "/agent/prompt"),
             chat_address=new_config.get("osc_chat_address", "/agent/chat"),
         )
