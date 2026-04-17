@@ -80,24 +80,33 @@ def _translate_claude(client, text: str) -> str:
 
 
 def _chat_openai(client, model: str, messages: list) -> str:
+    # 신형 모델(gpt-5.4 등)은 max_completion_tokens, 구형은 max_tokens 사용
+    kwargs = {"max_completion_tokens": 512} if _is_new_openai_model(model) else {"max_tokens": 512}
     response = client.chat.completions.create(
         model=model,
-        max_tokens=512,
         messages=[{"role": "system", "content": SYSTEM_PROMPT}] + messages,
+        **kwargs,
     )
     return response.choices[0].message.content
 
 
 def _translate_openai(client, text: str) -> str:
+    model = "gpt-5-4-mini"
+    kwargs = {"max_completion_tokens": 256} if _is_new_openai_model(model) else {"max_tokens": 256}
     response = client.chat.completions.create(
-        model="gpt-5-4-mini",
-        max_tokens=256,
+        model=model,
         messages=[
             {"role": "system", "content": "You are a translator. Translate the given image generation prompt to English only. Output ONLY the translated prompt, no explanations."},
             {"role": "user", "content": text},
         ],
+        **kwargs,
     )
     return response.choices[0].message.content.strip()
+
+
+def _is_new_openai_model(model: str) -> bool:
+    """gpt-5.x 등 max_completion_tokens를 요구하는 신형 모델 여부."""
+    return model.startswith("gpt-5") or model.startswith("o1") or model.startswith("o3")
 
 
 # ── Main agent class ────────────────────────────────────────────────────────
