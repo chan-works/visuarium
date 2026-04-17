@@ -141,13 +141,15 @@ class STTEngine:
     def _transcribe(self, buffer: list, duration: float):
         audio = np.concatenate(buffer, axis=0).flatten()
         try:
-            segments, _ = self.model.transcribe(
+            segments, info = self.model.transcribe(
                 audio,
                 beam_size=1,        # 빠른 추론 (greedy)
-                language=None,      # 자동 언어 감지
-                vad_filter=True,    # 내장 VAD로 묵음 구간 제거
+                language="ko",      # 한국어 고정 (자동감지보다 빠르고 정확)
+                vad_filter=False,   # 우리 VAD 이미 처리함 — 이중 필터 제거
+                no_speech_threshold=0.6,
             )
-            text = " ".join(s.text for s in segments).strip()
+            text = "".join(s.text for s in segments).strip()
+            print(f"[STT] 인식 결과: '{text}' (언어: {info.language}, {duration:.1f}초)")
             if text and self.on_transcript:
                 self.on_transcript(text, duration)
         except Exception as e:
