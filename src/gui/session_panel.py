@@ -201,17 +201,21 @@ class SessionPanel(ctk.CTkFrame):
         self.session_label.configure(text=f"세션 #{self.session_id}", text_color="#2ECC71")
         self._set_status("● 듣는 중", "#2ECC71")
 
-        self.stt.start()
-        self._waveform.start(self.config.get("mic_index"))
-        self._start_timer()
-
         for tag in self.chat_box.tag_names():
             self.chat_box.tag_delete(tag)
         self.chat_box.configure(state="normal")
         self.chat_box.delete("1.0", "end")
         self.chat_box.configure(state="disabled")
         self._live_label.configure(text="● 말씀해 주세요...", text_color="#888888")
-        self._append_chat("시스템", "세션이 시작되었습니다. 마이크에 대고 말씀해 주세요!")
+
+        provider = self.config.get("provider", "Claude")
+        model = self.config.get("model", "")
+        self._append_chat("시스템", f"세션 #{self.session_id} 시작 | {provider} · {model}")
+        self._append_chat("시스템", "마이크에 대고 말씀해 주세요. 멈추면 자동 인식됩니다.")
+
+        self.stt.start()
+        self._waveform.start(self.config.get("mic_index"))
+        self._start_timer()
 
     def stop_session(self):
         self.session_active = False
@@ -240,9 +244,10 @@ class SessionPanel(ctk.CTkFrame):
                 text="🎤 음성 감지 중...", text_color="#E74C3C"))
         else:
             if self.session_active:
-                self._set_status("● 듣는 중", "#2ECC71")
+                self._set_status("⏳ Whisper 인식 중...", "#F39C12")
                 self.after(0, lambda: self._live_label.configure(
-                    text="⏳ 인식 중...", text_color="#F39C12"))
+                    text="⏳ Whisper 인식 중...", text_color="#F39C12"))
+                self._append_chat("시스템", "🔄 음성 인식 처리 중...")
 
     def _on_transcript(self, text: str, duration: float):
         if not self.session_active:
@@ -253,6 +258,7 @@ class SessionPanel(ctk.CTkFrame):
 
         self._append_chat(f"👤 관객 #{idx}", text)
         self._set_status("⏳ AI 응답 생성 중...", "#F39C12")
+        self._append_chat("시스템", f"✓ 인식 완료 — AI 응답 대기 중...")
         self.after(0, lambda t=text: self._live_label.configure(
             text=f'"{t[:40]}{"..." if len(t) > 40 else ""}"',
             text_color="#DDDDDD"))

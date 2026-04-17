@@ -88,12 +88,22 @@ class STTEngine:
             rms = float(np.sqrt(np.mean(indata**2)))
             self._audio_queue.put((indata.copy(), rms))
 
+        # Try configured device, fall back to default if invalid
+        stream_device = self.mic_index
+        try:
+            test = sd.InputStream(samplerate=self.sample_rate, channels=1,
+                                   dtype='float32', blocksize=self.chunk_size,
+                                   device=stream_device, callback=audio_callback)
+            test.close()
+        except Exception:
+            stream_device = None
+
         with sd.InputStream(
             samplerate=self.sample_rate,
             channels=1,
             dtype='float32',
             blocksize=self.chunk_size,
-            device=self.mic_index,
+            device=stream_device,
             callback=audio_callback
         ):
             while self._running:
