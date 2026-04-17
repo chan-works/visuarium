@@ -12,12 +12,15 @@ class DataPanel(ctk.CTkFrame):
         self._build()
 
     def _build(self):
-        title = ctk.CTkLabel(self, text="📊 데이터 관리",
+        self._scroll = ctk.CTkScrollableFrame(self, fg_color="transparent")
+        self._scroll.pack(fill="both", expand=True)
+
+        title = ctk.CTkLabel(self._scroll, text="📊 데이터 관리",
                               font=ctk.CTkFont(size=18, weight="bold"))
         title.pack(pady=(16, 4), padx=20, anchor="w")
 
         # ── Top button row ─────────────────────────────────────────────────
-        btn_row = ctk.CTkFrame(self, fg_color="transparent")
+        btn_row = ctk.CTkFrame(self._scroll, fg_color="transparent")
         btn_row.pack(fill="x", padx=20, pady=(0, 8))
 
         ctk.CTkButton(btn_row, text="새로고침", width=100, command=self.refresh,
@@ -28,10 +31,10 @@ class DataPanel(ctk.CTkFrame):
                        fg_color="#E67E22", hover_color="#CA6F1E").pack(side="left")
 
         # ── Sessions treeview ──────────────────────────────────────────────
-        ctk.CTkLabel(self, text="세션 목록", font=ctk.CTkFont(size=13, weight="bold"),
+        ctk.CTkLabel(self._scroll, text="세션 목록", font=ctk.CTkFont(size=13, weight="bold"),
                      text_color="#A0C4E4").pack(anchor="w", padx=20, pady=(4, 2))
 
-        tree_frame = ctk.CTkFrame(self, fg_color="#1A1A1A")
+        tree_frame = ctk.CTkFrame(self._scroll, fg_color="#1A1A1A")
         tree_frame.pack(fill="both", expand=False, padx=20)
 
         style = ttk.Style()
@@ -64,12 +67,12 @@ class DataPanel(ctk.CTkFrame):
         self.session_tree.bind("<<TreeviewSelect>>", self._on_session_select)
 
         # ── Utterances treeview ────────────────────────────────────────────
-        ctk.CTkLabel(self, text="발화 상세 (세션 선택 시 표시)",
+        ctk.CTkLabel(self._scroll, text="발화 상세 (세션 선택 시 표시)",
                      font=ctk.CTkFont(size=13, weight="bold"),
                      text_color="#A0C4E4").pack(anchor="w", padx=20, pady=(10, 2))
 
-        tree_frame2 = ctk.CTkFrame(self, fg_color="#1A1A1A")
-        tree_frame2.pack(fill="both", expand=True, padx=20, pady=(0, 12))
+        tree_frame2 = ctk.CTkFrame(self._scroll, fg_color="#1A1A1A")
+        tree_frame2.pack(fill="x", padx=20, pady=(0, 12))
 
         ucols = ("idx", "utterance_text", "prompt_text", "word_count", "duration", "spoken_at")
         self.utt_tree = ttk.Treeview(tree_frame2, columns=ucols, show="headings",

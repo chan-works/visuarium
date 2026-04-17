@@ -20,7 +20,10 @@ class SettingsPanel(ctk.CTkFrame):
         self._build()
 
     def _build(self):
-        title = ctk.CTkLabel(self, text="⚙ 설정", font=ctk.CTkFont(size=18, weight="bold"))
+        self._scroll = ctk.CTkScrollableFrame(self, fg_color="transparent")
+        self._scroll.pack(fill="both", expand=True)
+
+        title = ctk.CTkLabel(self._scroll, text="⚙ 설정", font=ctk.CTkFont(size=18, weight="bold"))
         title.pack(pady=(16, 10), padx=20, anchor="w")
 
         # ── API Provider ────────────────────────────────────────────────────
@@ -176,12 +179,12 @@ class SettingsPanel(ctk.CTkFrame):
         self._osc_status.pack(side="left", padx=(12, 0))
 
         # ── Save button ────────────────────────────────────────────────────
-        save_btn = ctk.CTkButton(self, text="저장", command=self._save,
+        save_btn = ctk.CTkButton(self._scroll, text="저장", command=self._save,
                                   fg_color="#2ECC71", hover_color="#27AE60",
                                   font=ctk.CTkFont(size=14, weight="bold"))
         save_btn.pack(pady=16, padx=20, fill="x")
 
-        self.status_label = ctk.CTkLabel(self, text="", text_color="gray")
+        self.status_label = ctk.CTkLabel(self._scroll, text="", text_color="gray")
         self.status_label.pack()
 
     # ── Provider toggle ────────────────────────────────────────────────────
@@ -222,9 +225,9 @@ class SettingsPanel(ctk.CTkFrame):
     # ── Helpers ────────────────────────────────────────────────────────────
 
     def _section(self, title: str) -> ctk.CTkFrame:
-        ctk.CTkLabel(self, text=title, font=ctk.CTkFont(size=13, weight="bold"),
+        ctk.CTkLabel(self._scroll, text=title, font=ctk.CTkFont(size=13, weight="bold"),
                      text_color="#A0C4E4").pack(anchor="w", padx=20, pady=(10, 2))
-        frame = ctk.CTkFrame(self, fg_color="#2B2B2B", corner_radius=8)
+        frame = ctk.CTkFrame(self._scroll, fg_color="#2B2B2B", corner_radius=8)
         frame.pack(fill="x", padx=20, pady=(0, 4))
         inner = ctk.CTkFrame(frame, fg_color="transparent")
         inner.pack(fill="x", padx=12, pady=8)
