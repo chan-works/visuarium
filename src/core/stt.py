@@ -5,17 +5,16 @@ import os
 import sys
 import numpy as np
 import sounddevice as sd
-import whisper
 from typing import Callable, Optional
 
 
-def _get_whisper_download_root() -> str:
-    """Return the bundled model dir when frozen, else default cache."""
+def _get_model_dir() -> str:
+    """Return bundled model dir when frozen, else default cache."""
     if getattr(sys, 'frozen', False):
-        bundled = os.path.join(sys._MEIPASS, 'whisper_models')
+        bundled = os.path.join(sys._MEIPASS, 'faster_whisper_models')
         if os.path.isdir(bundled):
             return bundled
-    return os.path.join(os.path.expanduser('~'), '.cache', 'whisper')
+    return os.path.join(os.path.expanduser('~'), '.cache', 'faster_whisper')
 
 
 class STTEngine:
@@ -27,14 +26,13 @@ class STTEngine:
         self.mic_index = mic_index
         self.vad_threshold = vad_threshold
         self.silence_duration = silence_duration
-        self.on_transcript = on_transcript  # callback(text, duration_sec)
-        self.on_listening = on_listening    # callback(is_speaking: bool)
+        self.on_transcript = on_transcript
+        self.on_listening = on_listening
 
         self.model = None
         self._running = False
         self._audio_queue = queue.Queue()
         self._thread = None
-        self._process_thread = None
         self.sample_rate = 16000
         self.chunk_size = 1024
 
@@ -48,8 +46,14 @@ class STTEngine:
 
         _cb(f"Whisper 모델 로딩 중... ({self.model_name})")
         try:
-            download_root = _get_whisper_download_root()
-            self.model = whisper.load_model(self.model_name, download_root=download_root)
+            from faster_whisper import WhisperModel
+            model_dir = _get_model_dir()
+            self.model = WhisperModel(
+                self.model_name,
+                device="cpu",
+                compute_type="int8",          # 가장 빠른 CPU 추론
+                download_root=model_dir,
+            )
             _cb("모델 로드 완료")
         except Exception as e:
             self.model = None
@@ -72,11 +76,8 @@ class STTEngine:
 
     def get_available_mics(self):
         devices = sd.query_devices()
-        mics = []
-        for i, d in enumerate(devices):
-            if d['max_input_channels'] > 0:
-                mics.append((i, d['name']))
-        return mics
+        return [(i, d['name']) for i, d in enumerate(devices)
+                if d['max_input_channels'] > 0]
 
     def _record_loop(self):
         buffer = []
@@ -85,7 +86,7 @@ class STTEngine:
         speech_start = None
 
         def audio_callback(indata, frames, time_info, status):
-            rms = float(np.sqrt(np.mean(indata**2)))
+            rms = float(np.sqrt(np.mean(indata ** 2)))
             self._audio_queue.put((indata.copy(), rms))
 
         # Try configured device, fall back to default if invalid
@@ -104,7 +105,7 @@ class STTEngine:
             dtype='float32',
             blocksize=self.chunk_size,
             device=stream_device,
-            callback=audio_callback
+            callback=audio_callback,
         ):
             while self._running:
                 try:
@@ -128,19 +129,26 @@ class STTEngine:
                         if silence_start is None:
                             silence_start = time.time()
                         elif time.time() - silence_start >= self.silence_duration:
-                            # Speech segment ended — transcribe
                             duration = time.time() - speech_start
+                            if self.on_listening:
+                                self.on_listening(False)
                             self._transcribe(buffer, duration)
                             buffer = []
                             speaking = False
                             silence_start = None
                             speech_start = None
-                            if self.on_listening:
-                                self.on_listening(False)
 
     def _transcribe(self, buffer: list, duration: float):
         audio = np.concatenate(buffer, axis=0).flatten()
-        result = self.model.transcribe(audio, fp16=False, language=None)
-        text = result["text"].strip()
-        if text and self.on_transcript:
-            self.on_transcript(text, duration)
+        try:
+            segments, _ = self.model.transcribe(
+                audio,
+                beam_size=1,        # 빠른 추론 (greedy)
+                language=None,      # 자동 언어 감지
+                vad_filter=True,    # 내장 VAD로 묵음 구간 제거
+            )
+            text = " ".join(s.text for s in segments).strip()
+            if text and self.on_transcript:
+                self.on_transcript(text, duration)
+        except Exception as e:
+            print(f"[STT] 인식 오류: {e}")
