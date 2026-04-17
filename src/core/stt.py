@@ -8,13 +8,17 @@ import sounddevice as sd
 from typing import Callable, Optional
 
 
-def _get_model_dir() -> str:
-    """Return bundled model dir when frozen, else default cache."""
+def _get_model_path(model_name: str) -> str:
+    """
+    Returns the model path to pass to WhisperModel.
+    - Frozen app: uses bundled fw_models/<model_name>/
+    - Dev mode:   passes model_name directly (HuggingFace auto-download)
+    """
     if getattr(sys, 'frozen', False):
-        bundled = os.path.join(sys._MEIPASS, 'faster_whisper_models')
-        if os.path.isdir(bundled):
+        bundled = os.path.join(sys._MEIPASS, 'fw_models', model_name)
+        if os.path.isdir(bundled) and os.path.exists(os.path.join(bundled, 'model.bin')):
             return bundled
-    return os.path.join(os.path.expanduser('~'), '.cache', 'faster_whisper')
+    return model_name
 
 
 class STTEngine:
@@ -47,12 +51,11 @@ class STTEngine:
         _cb(f"Whisper 모델 로딩 중... ({self.model_name})")
         try:
             from faster_whisper import WhisperModel
-            model_dir = _get_model_dir()
+            model_path = _get_model_path(self.model_name)
             self.model = WhisperModel(
-                self.model_name,
+                model_path,
                 device="cpu",
                 compute_type="int8",          # 가장 빠른 CPU 추론
-                download_root=model_dir,
             )
             _cb("모델 로드 완료")
         except Exception as e:
