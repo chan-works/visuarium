@@ -1,9 +1,11 @@
 import customtkinter as ctk
 import json
 import os
+import threading
 import sounddevice as sd
 from typing import Callable
 from src.gui.waveform_widget import WaveformWidget
+from src.core.osc_sender import OSCSender
 
 CONFIG_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "config.json")
 
@@ -143,6 +145,31 @@ class SettingsPanel(ctk.CTkFrame):
         self.ws_port_entry.insert(0, str(self.config.get("websocket_port", 9000)))
         self.ws_port_entry.pack(side="left", padx=(8, 0))
 
+        # ── OSC 테스트 ─────────────────────────────────────────────────────
+        section4 = self._section("OSC 전송 테스트")
+
+        ctk.CTkLabel(section4, text="테스트 메시지").pack(anchor="w")
+        self.osc_test_entry = ctk.CTkEntry(section4, placeholder_text="전송할 텍스트 입력...")
+        self.osc_test_entry.insert(0, "a beautiful rose blooming at night")
+        self.osc_test_entry.pack(fill="x", pady=(0, 6))
+
+        test_row = ctk.CTkFrame(section4, fg_color="transparent")
+        test_row.pack(fill="x")
+
+        self._osc_test_btn = ctk.CTkButton(
+            test_row, text="▶ OSC 전송", width=110, height=28,
+            fg_color="#2C5F8A", hover_color="#1E4060",
+            font=ctk.CTkFont(size=12),
+            command=self._send_osc_test
+        )
+        self._osc_test_btn.pack(side="left")
+
+        self._osc_status = ctk.CTkLabel(
+            test_row, text="", font=ctk.CTkFont(size=12),
+            text_color="#888", anchor="w"
+        )
+        self._osc_status.pack(side="left", padx=(12, 0))
+
         # ── Save button ────────────────────────────────────────────────────
         save_btn = ctk.CTkButton(self, text="저장", command=self._save,
                                   fg_color="#2ECC71", hover_color="#27AE60",
@@ -208,6 +235,38 @@ class SettingsPanel(ctk.CTkFrame):
         except Exception:
             pass
         return options
+
+    def _send_osc_test(self):
+        msg = self.osc_test_entry.get().strip()
+        if not msg:
+            self._osc_status.configure(text="⚠ 메시지를 입력하세요", text_color="#F39C12")
+            return
+
+        ip = self.osc_ip_entry.get().strip()
+        try:
+            port = int(self.osc_port_entry.get().strip())
+        except ValueError:
+            self._osc_status.configure(text="⚠ Port가 올바르지 않습니다", text_color="#E74C3C")
+            return
+        address = self.osc_addr_entry.get().strip()
+
+        self._osc_test_btn.configure(state="disabled")
+        self._osc_status.configure(text="전송 중...", text_color="#888")
+
+        def _do():
+            try:
+                sender = OSCSender(ip=ip, port=port, address=address)
+                sender.send_prompt(msg)
+                self.after(0, lambda: self._osc_status.configure(
+                    text=f"✓ 전송 완료  →  {ip}:{port}  {address}", text_color="#2ECC71"))
+            except Exception as e:
+                self.after(0, lambda err=e: self._osc_status.configure(
+                    text=f"✗ 전송 실패: {err}", text_color="#E74C3C"))
+            finally:
+                self.after(0, lambda: self._osc_test_btn.configure(state="normal"))
+                self.after(3000, lambda: self._osc_status.configure(text=""))
+
+        threading.Thread(target=_do, daemon=True).start()
 
     def _save(self):
         if self._mic_testing:
