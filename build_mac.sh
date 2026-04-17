@@ -67,3 +67,5 @@ echo "버전:     ${NEW_VERSION}"
 echo ""
 echo "dist/ 폴더의 모든 DMG:"
 ls -lh dist/*.dmg 2>/dev/null || echo "  (없음)"
+
+open dist/
