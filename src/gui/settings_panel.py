@@ -66,9 +66,9 @@ class SettingsPanel(ctk.CTkFrame):
         row_om = ctk.CTkFrame(self._openai_frame, fg_color="transparent")
         row_om.pack(fill="x", pady=(0, 4))
         ctk.CTkLabel(row_om, text="모델").pack(side="left")
-        self.openai_model_var = ctk.StringVar(value=self.config.get("openai_model", "gpt-4o"))
+        self.openai_model_var = ctk.StringVar(value=self.config.get("openai_model", "gpt-5.4"))
         ctk.CTkOptionMenu(row_om, variable=self.openai_model_var,
-                          values=["gpt-4o", "gpt-4o-mini", "gpt-4-turbo"]
+                          values=["gpt-5.4", "gpt-5-4-mini", "gpt-4o", "gpt-4o-mini", "gpt-4-turbo"]
                           ).pack(side="left", padx=(8, 0))
 
         self._on_provider_change(self.provider_var.get())

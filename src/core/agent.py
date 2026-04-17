@@ -90,7 +90,7 @@ def _chat_openai(client, model: str, messages: list) -> str:
 
 def _translate_openai(client, text: str) -> str:
     response = client.chat.completions.create(
-        model="gpt-4o-mini",
+        model="gpt-5-4-mini",
         max_tokens=256,
         messages=[
             {"role": "system", "content": "You are a translator. Translate the given image generation prompt to English only. Output ONLY the translated prompt, no explanations."},
