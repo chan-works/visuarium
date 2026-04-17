@@ -33,10 +33,12 @@ PROMPT_GUIDE = """🎨 프롬프트 가이드
 class SessionPanel(ctk.CTkFrame):
     def __init__(self, parent, config: dict,
                  on_prompt_ready: Callable[[str], None],
+                 on_chat_message: Optional[Callable[[str], None]] = None,
                  **kwargs):
         super().__init__(parent, **kwargs)
         self.config = config
         self.on_prompt_ready = on_prompt_ready
+        self.on_chat_message = on_chat_message
 
         self.session_id: Optional[int] = None
         self.utterance_index = 0
@@ -259,6 +261,8 @@ class SessionPanel(ctk.CTkFrame):
         self._append_chat(f"👤 관객 #{idx}", text)
         self._set_status("⏳ AI 응답 생성 중...", "#F39C12")
         self._append_chat("시스템", f"✓ 인식 완료 — AI 응답 대기 중...")
+        if self.on_chat_message:
+            self.on_chat_message(f"[관객] {text}")
         self.after(0, lambda t=text: self._live_label.configure(
             text=f'"{t[:40]}{"..." if len(t) > 40 else ""}"',
             text_color="#DDDDDD"))
@@ -284,6 +288,8 @@ class SessionPanel(ctk.CTkFrame):
         self._append_chat("🤖 AI", display)
         self.prompt_label.configure(text=prompt)
         self.on_prompt_ready(prompt)
+        if self.on_chat_message:
+            self.on_chat_message(f"[AI] {display}")
         if self.session_active:
             self._set_status("● 듣는 중", "#2ECC71")
             self._live_label.configure(text="● 말씀해 주세요...", text_color="#888888")

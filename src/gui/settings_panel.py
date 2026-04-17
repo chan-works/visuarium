@@ -133,10 +133,15 @@ class SettingsPanel(ctk.CTkFrame):
         self.osc_port_entry.insert(0, str(self.config.get("osc_port", 9001)))
         self.osc_port_entry.pack(side="left", padx=(8, 0))
 
-        ctk.CTkLabel(section3, text="OSC Address").pack(anchor="w")
-        self.osc_addr_entry = ctk.CTkEntry(section3)
-        self.osc_addr_entry.insert(0, self.config.get("osc_address", "/visuarium/prompt"))
-        self.osc_addr_entry.pack(fill="x", pady=(0, 4))
+        ctk.CTkLabel(section3, text="프롬프트 OSC Address  (최종 이미지 생성 프롬프트)").pack(anchor="w")
+        self.osc_prompt_addr_entry = ctk.CTkEntry(section3)
+        self.osc_prompt_addr_entry.insert(0, self.config.get("osc_prompt_address", "/agent/prompt"))
+        self.osc_prompt_addr_entry.pack(fill="x", pady=(0, 4))
+
+        ctk.CTkLabel(section3, text="대화 OSC Address  (사용자 발화 / AI 응답)").pack(anchor="w")
+        self.osc_chat_addr_entry = ctk.CTkEntry(section3)
+        self.osc_chat_addr_entry.insert(0, self.config.get("osc_chat_address", "/agent/chat"))
+        self.osc_chat_addr_entry.pack(fill="x", pady=(0, 4))
 
         row5 = ctk.CTkFrame(section3, fg_color="transparent")
         row5.pack(fill="x")
@@ -248,7 +253,7 @@ class SettingsPanel(ctk.CTkFrame):
         except ValueError:
             self._osc_status.configure(text="⚠ Port가 올바르지 않습니다", text_color="#E74C3C")
             return
-        address = self.osc_addr_entry.get().strip()
+        address = self.osc_prompt_addr_entry.get().strip()
 
         self._osc_test_btn.configure(state="disabled")
         self._osc_status.configure(text="전송 중...", text_color="#888")
@@ -299,7 +304,8 @@ class SettingsPanel(ctk.CTkFrame):
                 "mic_name": mic_name,
                 "osc_ip": self.osc_ip_entry.get().strip(),
                 "osc_port": int(self.osc_port_entry.get().strip()),
-                "osc_address": self.osc_addr_entry.get().strip(),
+                "osc_prompt_address": self.osc_prompt_addr_entry.get().strip(),
+                "osc_chat_address": self.osc_chat_addr_entry.get().strip(),
                 "websocket_port": int(self.ws_port_entry.get().strip()),
                 "whisper_model": self.whisper_var.get(),
                 "vad_threshold": float(self.vad_entry.get().strip()),

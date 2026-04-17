@@ -23,7 +23,8 @@ class MainWindow(ctk.CTk):
         self.osc_sender = OSCSender(
             ip=config.get("osc_ip", "127.0.0.1"),
             port=config.get("osc_port", 9001),
-            address=config.get("osc_address", "/visuarium/prompt"),
+            prompt_address=config.get("osc_prompt_address", "/agent/prompt"),
+            chat_address=config.get("osc_chat_address", "/agent/chat"),
         )
 
         self._build()
@@ -64,6 +65,7 @@ class MainWindow(ctk.CTk):
         self.session_panel = SessionPanel(
             self.content, config=self.config_data,
             on_prompt_ready=self._on_prompt_ready,
+            on_chat_message=self._on_chat_message,
         )
         self.settings_panel = SettingsPanel(
             self.content, config=self.config_data,
@@ -96,6 +98,9 @@ class MainWindow(ctk.CTk):
         self.ws_server.send_prompt(prompt)
         self.osc_sender.send_prompt(prompt)
 
+    def _on_chat_message(self, text: str):
+        self.osc_sender.send_chat(text)
+
     def _on_config_save(self, new_config: dict):
         self.config_data.update(new_config)
         # Update WebSocket port if changed
@@ -103,7 +108,8 @@ class MainWindow(ctk.CTk):
         self.osc_sender.update(
             ip=new_config.get("osc_ip", "127.0.0.1"),
             port=new_config.get("osc_port", 9001),
-            address=new_config.get("osc_address", "/visuarium/prompt"),
+            prompt_address=new_config.get("osc_prompt_address", "/agent/prompt"),
+            chat_address=new_config.get("osc_chat_address", "/agent/chat"),
         )
         self.session_panel.update_config(new_config)
 
